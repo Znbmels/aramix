@@ -1,0 +1,33 @@
+#Игнорировать папки и файлы Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+#игнорировать виртуальные окружения
+venv/
+env/
+.venv/
+.env/
+
+# игнорировать файлы зависимостей
+*.egg-info/
+dist/
+build/
+
+#игнорировать файлы IDE
+.vscode/
+.idea/
+
+#игнорировать логи и кэш
+*.log
+*.cache
+
+#игнорировать конфигурационные файлы
+*.env
+*.ini
+*.cfg
+.ipynb_checkpoints/
+
+
+.DS_Store
+Thumbs.db

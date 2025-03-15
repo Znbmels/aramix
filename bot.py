@@ -15,21 +15,21 @@ from telegram.ext import (
 )
 from datetime import datetime
 
-# Настройка логирования
+#логирования
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
-# Константы для CRM SuiteCRM
+#CRM SuiteCRM
 SUITECRM_URL = "http://crm.aramax.kz:8080"  # URL сервера CRM
 SUITECRM_AUTH_ENDPOINT = f"{SUITECRM_URL}/legacy/Api/access_token"  # Эндпоинт авторизации
 SUITECRM_TASKS_ENDPOINT = f"{SUITECRM_URL}/legacy/Api/V8/module"  # Эндпоинт создания задач
 CLIENT_ID = "edafaa02-5599-f449-4348-67695b4ffad8"  # OAuth2 client_id
 CLIENT_SECRET = "VtpZM*GY5mLQ3A60"  # OAuth2 client_secret
 
-# Параметры подключения к базе данных
+#базa данных
 DB_CONFIG = {
     "host": "crm.aramax.kz",
     "port": 3306,
@@ -39,15 +39,13 @@ DB_CONFIG = {
 }
 
 def normalize_phone(phone: str) -> str:
-    """
-    Нормализует номер телефона (удаляет пробелы, скобки и другие символы, но оставляет +).
-    """
+
+    #Нормализ номер телефона.
+
     return phone.replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
 
-async def get_db_connection():
-    """
-    Устанавливает соединение с базой данных.
-    """
+async def get_db_connection():#Устанавливает соединение с базой данных.
+
     try:
         pool = await aiomysql.create_pool(**DB_CONFIG)
         logger.info("Подключение к базе данных успешно установлено.")
@@ -56,10 +54,8 @@ async def get_db_connection():
         logger.error(f"Ошибка при подключении к базе данных: {e}")
         raise
 
-async def check_phone_in_db(phone: str) -> bool:
-    """
-    Проверяет, есть ли номер телефона в базе данных.
-    """
+async def check_phone_in_db(phone: str) -> bool:#Проверяет, есть ли номер телефона в базе данных.
+
     normalized_phone = normalize_phone(phone)
     logger.info(f"Нормализованный номер телефона: {normalized_phone}")
     pool = await get_db_connection()
@@ -84,16 +80,14 @@ async def check_phone_in_db(phone: str) -> bool:
         await pool.wait_closed()
 
 async def get_assigned_user_id_from_db(phone: str) -> str:
-    """
-    Получает ID исполнителя из базы данных на основе номера телефона.
-    Если исполнитель не найден, возвращает дефолтного исполнителя.
-    """
+    #Получает ID исполнителя из базы данных на основе номера телефона.Если исполнитель не найден, возвращает дефолтного исполнителя.
+
     normalized_phone = normalize_phone(phone)
     pool = await get_db_connection()
     try:
         async with pool.acquire() as conn:
             async with conn.cursor() as cursor:
-                query = "SELECT u_id_crm FROM u_bot WHERE u_number = %s"  # Исправлено название столбца
+                query = "SELECT u_id_crm FROM u_bot WHERE u_number = %s" 
                 logger.info(f"Выполняется запрос: {query} с параметром {normalized_phone}")
                 await cursor.execute(query, (normalized_phone,))
                 result = await cursor.fetchone()
@@ -111,9 +105,7 @@ async def get_assigned_user_id_from_db(phone: str) -> str:
         await pool.wait_closed()
 
 async def get_access_token() -> str:
-    """
-    Получает access_token для авторизации в CRM SuiteCRM через OAuth2 client_credentials.
-    """
+#Получает access_token для авторизации в CRM SuiteCRM через OAuth2 client_credentials.
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
@@ -136,39 +128,36 @@ async def get_access_token() -> str:
         raise
 
 async def create_task_in_crm(phone: str, task_text: str, assigned_user_id: str) -> bool:
-    """
-    Создаёт задачу в CRM SuiteCRM.
-    """
+#оздаёт задачу в CRM SuiteCRM.
+
     try:
-        # Получаем access_token
+        #pолучаем access_token
         access_token = await get_access_token()
 
-        # Формируем заголовки
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
         }
 
-        # Формируем тело запроса
         payload = {
             "data": {
-                "type": "Task",  # Обратите внимание: "Task" (не "Tasks")
+                "type": "Task",  
                 "attributes": {
                     "name": task_text,
                     "assigned_user_id": assigned_user_id,
                     "date_start": datetime.now().strftime("%Y-%m-%d"),
                     "priority": "Medium",
-                    "status": "Not Started",  # Добавляем статус задачи
-                    "date_due_flag": "0",     # Флаг даты завершения (0 = нет)
-                    "date_start_flag": "0",   # Флаг даты начала (0 = нет)
+                    "status": "Not Started",
+                    "date_due_flag": "0",     
+                    "date_start_flag": "0", 
                 },
             }
         }
 
-        # Отправляем POST-запрос
+        #POST-запрос
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                SUITECRM_TASKS_ENDPOINT,  # Правильный эндпоинт
+                SUITECRM_TASKS_ENDPOINT,  
                 headers=headers,
                 json=payload,
             )
@@ -189,9 +178,8 @@ async def create_task_in_crm(phone: str, task_text: str, assigned_user_id: str) 
         return False
 
 def convert_voice_to_text(ogg_path: str) -> str:
-    """
-    Преобразует голосовое сообщение в текст.
-    """
+#Преобраз голосовое сообщение в текст.
+
     wav_path = ogg_path.replace(".ogg", ".wav")
     AudioSegment.from_file(ogg_path).export(wav_path, format="wav")
     recognizer = sr.Recognizer()
@@ -207,9 +195,8 @@ def convert_voice_to_text(ogg_path: str) -> str:
     return text
 
 async def send_inline_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Отправляет inline-меню с кнопками.
-    """
+#inline-меню с кнопками.
+
     keyboard = InlineKeyboardMarkup(
         [
             [InlineKeyboardButton("Создать задачу голосом", callback_data="voice_task")],
@@ -223,9 +210,8 @@ async def send_inline_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """
-    Обрабатывает команду /start.
-    """
+#Обрабатывает команду /start.
+
     await update.message.reply_text("Привет! Введите, пожалуйста, свой номер телефона.")
 
 async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -234,7 +220,7 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     """
     text = update.message.text.strip()
 
-    # Если пользователь выбрал "Создать задачу текстом"
+    #eсли пользователь выбрал "Создать задачу текстом"
     if context.user_data.get("task_mode") == "text":
         phone = context.user_data.get("phone", "")
         if not phone:
@@ -245,7 +231,7 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             await update.message.reply_text("Текст задачи не может быть пустым. Попробуйте ещё раз.")
             return
 
-        # Получаем ID исполнителя из базы данных
+        #pолучаем ID исполнителя из базы данных
         assigned_user_id = await get_assigned_user_id_from_db(phone)
         if not assigned_user_id:
             await update.message.reply_text("Не удалось найти исполнителя для вашего номера.")
@@ -261,16 +247,16 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         context.user_data["task_mode"] = None
         return
 
-    # Проверяем, является ли текст номером телефона
+    #является ли текст номером телефона
     normalized_phone = normalize_phone(text)
     logger.info(f"Нормализованный номер телефона: {normalized_phone}")
 
     if normalized_phone.replace("+", "").isdigit() and len(normalized_phone.replace("+", "")) >= 10:
         if await check_phone_in_db(normalized_phone):
-            context.user_data["phone"] = normalized_phone  # Сохраняем номер телефона в контексте
+            context.user_data["phone"] = normalized_phone  # номер телефона в контексте
             logger.info(f"Номер телефона {normalized_phone} зарегистрирован в базе данных.")
 
-            # Отправляем inline-меню после проверки номера
+            # inline-меню после проверки номера
             await send_inline_menu(update, context)
         else:
             await update.message.reply_text("Ваш номер телефона не зарегистрирован.")
@@ -280,9 +266,7 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         )
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """
-    Обрабатывает нажатия на inline-кнопки.
-    """
+#Обрабатывает нажатия на inline-кнопки.
     query = update.callback_query
     await query.answer()
 
@@ -294,9 +278,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await query.edit_message_text("Введите текст задачи.")
 
 async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """
-    Обрабатывает голосовые сообщения.
-    """
+#Обрабатывает голосовые сообщения.
+
     if update.message.voice:
         if context.user_data.get("task_mode") != "voice":
             await update.message.reply_text("Сначала выберите «Создать задачу голосом».")
@@ -318,7 +301,7 @@ async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             await update.message.reply_text("Не удалось распознать голос. Попробуйте ещё раз.")
             return
 
-        # Получаем ID исполнителя из базы данных
+        #ID исполнителя из базы данных
         assigned_user_id = await get_assigned_user_id_from_db(phone)
         if not assigned_user_id:
             await update.message.reply_text("Не удалось найти исполнителя для вашего номера.")
@@ -341,12 +324,12 @@ def main():
     """
     application = (
         ApplicationBuilder()
-        .token("7776142722:AAEK-CUbI8Zh4SYswRWLZ4XAMBDOQRYjmRU")  # Замените на ваш токен
+        .token("7776142722:AAEK-CUbI8Zh4SYswRWLZ4XAMBDOQRYjmRU")  
         .build()
     )
 
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CallbackQueryHandler(button_handler))  # Обработчик inline-кнопок
+    application.add_handler(CallbackQueryHandler(button_handler))  #inline-knopki
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
     application.add_handler(MessageHandler(filters.VOICE, voice_handler))
 

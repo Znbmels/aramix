@@ -2,11 +2,11 @@ import asyncio
 import aiomysql
 import logging
 
-# Настройка логирования
+#логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Конфигурация базы данных
+#базы данных
 DB_CONFIG = {
     "host": "crm.aramax.kz",  
     "port": 3306,             
@@ -16,9 +16,7 @@ DB_CONFIG = {
 }
 
 async def get_db_connection():
-    """
-    Устанавливает соединение с базой данных.
-    """
+#Устанавливает соединение с базой данных.
     try:
         pool = await aiomysql.create_pool(**DB_CONFIG)
         logger.info("Подключение к базе данных успешно установлено.")
@@ -28,9 +26,8 @@ async def get_db_connection():
         raise
 
 async def get_table_structure():
-    """
-    Проверяет структуру таблицы u_bot.
-    """
+#Проверяет структуру таблицы u_bot.
+
     pool = await get_db_connection()
     try:
         async with pool.acquire() as conn:
@@ -50,9 +47,9 @@ async def get_table_structure():
         await pool.wait_closed()
 
 async def main():
-    """
-    Основная функция.
-    """
+
+#Основная функция.
+
     await get_table_structure()
 
 if __name__ == "__main__":
