@@ -1,10 +1,8 @@
-name: CI
+name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   test:
@@ -27,3 +25,18 @@ jobs:
 
       - name: Run tests
         run: pytest --maxfail=1 --disable-warnings -q
+
+  deploy:
+    needs: test  # Деплой только если тесты прошли
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          curl -fsSL https://railway.app/install.sh | sh
+          railway up --service your-service-name
