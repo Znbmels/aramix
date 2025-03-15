@@ -1,0 +1,7 @@
+python-telegram-bot
+httpx
+aiomysql
+pydub
+SpeechRecognition
+pytest
+pytest-asyncio
